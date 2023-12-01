@@ -1,0 +1,73 @@
+% Load `advice` for the appropriate format.
+\ifpgfutil@format@is@latex\usepackage{advice}\fi
+\ifpgfutil@format@is@plain\input advice\fi
+\ifpgfutil@format@is@context\usemodule[advice]\fi
+% Load the `\tikz` collector.
+\input advice-tikz.code.tex
+
+% Define the md5sum macro appropriate for the engine.
+\ifdefined\luatexversion
+  \long\def\mdfivesumpictureid@mdfivesum#1{%
+    \directlua{%
+      oberdiek.pdftexcmds.mdfivesum("\luaescapestring{#1}", "byte")%
+    }%
+  }%
+\else
+  \ifdefined\pdfmdfivesum
+    \let\mdfivesumpictureid@mdfivesum\pdfmdfivesum
+  \else
+    \ifdefined\mdfivesum
+      \let\mdfivesumpictureid@mdfivesum\mdfivesum
+    \else
+      \pgfutil@packageerror{Cannot define md5sum macro}%
+    \fi
+  \fi
+\fi
+
+\pgfkeys{
+  /tikz/md5sumpictureid/.install advice,
+  /tikz/md5sumpictureid/.cd,
+  % The UI environments/macros will grab the picture code and compute its
+  % md5sum.  We try to advise `tikzpicture` and `\tikz` as well; no harm is
+  % done if they are undefined.
+  advice={tikzpicture}{
+    run conditions=\mdfivesumpictureid@unlessmdfivesumdefined,
+    inner handler=\mdfivesumpictureid@compute@mdfivesum,
+  },
+  advice=\tikz{
+    run conditions=\mdfivesumpictureid@unlessmdfivesumdefined,
+    collector=\AdviceCollectTikZArguments,
+    inner handler=\mdfivesumpictureid@compute@mdfivesum,
+  },
+  advice={pgfpicture}{
+    run conditions=\mdfivesumpictureid@unlessmdfivesumdefined,
+    inner handler=\mdfivesumpictureid@compute@mdfivesum,
+  },
+  % `\pgf@picture` is called by `\pgfpicture` after initialization, so it is a
+  % perfect place to hack in order to redefine `\pgfpictureid`.
+  advice csname={pgf@picture}{outer handler=\mdfivesumpictureid@pgf@picture},
+}
+
+% This addresses a problem in plain TeX, where \tikz calls \tikzpicture, which
+% is also advised.  However, nested tikz pictures won't work now.
+\def\mdfivesumpictureid@unlessmdfivesumdefined{%
+  \ifdefined\mdfivesumpictureid\else\AdviceRuntrue\fi
+}
+% Perhaps the run conditions could include a user-settable conditional, so that
+% the functionality of the library can be temporarily disabled?
+
+% This macro computes the md5sum of the picture code given in #1.  Note that
+% pictures with identical code will have the same ID.  Perhaps it would be
+% sensible to have the possibility of declaring the context, like in Memoize.
+\long\def\mdfivesumpictureid@compute@mdfivesum#1{%
+  \edef\mdfivesumpictureid{pgfid\mdfivesumpictureid@mdfivesum{\unexpanded{#1}}}%
+  \AdviceOriginal#1%
+  % Undefine \mdfivesumpictureid, for run conditions.
+  \let\mdfivesumpictureid\mdfivesumpictureid@undefined
+}
+
+% Here, we override the sequential-number-based \pgfpictureid.
+\def\mdfivesumpictureid@pgf@picture{%
+  \let\pgfpictureid\mdfivesumpictureid
+  \AdviceOriginal
+}
