@@ -1,0 +1,33 @@
+\documentclass{article}
+
+\usepackage{tikz}
+\usetikzlibrary{md5sumpictureid}
+% \usepackage{pgf}
+% \usepgflibrary{md5sumpictureid}
+
+\begin{document}
+
+\begin{pgfpicture}
+  \pgfnode{rectangle}{base}{\pgfpictureid}{hellonode}{}
+\end{pgfpicture}
+
+\tikz\node[draw,red]{\pgfpictureid};
+
+\tikz{\node[draw,orange]{\pgfpictureid};}
+
+Target: \begin{tikzpicture}[remember picture]
+  \node(target)[draw]{\pgfpictureid};
+\end{tikzpicture}
+
+Source:
+\begin{tikzpicture}[remember picture, overlay]
+  \draw[->] (0,0) -- (target);
+\end{tikzpicture}
+
+
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:
